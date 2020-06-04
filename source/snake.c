@@ -45,6 +45,7 @@ typedef struct
 typedef struct
 {
     uint16_t size;
+    uint16_t size_max;
 
     SnakeDirection direction;
     SnakeDirection prev_direction;
@@ -374,45 +375,44 @@ static void snake_create(board_t * board, snake_t * snake)
 
     /// create the snake body.
     /// set the size to the size of the board (max size).
-    snake->body = calloc(board->rows * board->columns, sizeof(snake_body_t));
+    snake->size_max = board->rows * board->columns;
+    snake->body = calloc(snake->size_max, sizeof(snake_body_t));
     assert(snake->body);
 
-    /// give it a random direction.
-    /// start the snake in the middle of the board and set the size to 3 (H|M|T).
+    /// random starting direction.
     snake->direction = snake_gen_rand_direction();
     snake->size = 3;
+    snake->h_pos = 0;
+    snake->t_pos = 2;
+
+    /// set the head to start in the middle.
+    /// the body will be set to the same position as the head.
     snake->body[0].x = board->rows/2;
     snake->body[0].y = board->columns/2;
+    snake->body[1] = snake->body[0];
+    snake->body[2] = snake->body[0];
 
     /// calculate the rest of the snake body position based on the initial direction.
     switch (snake->direction)
     {
         case SnakeDirection_LEFT:
-            snake->body[1].x = snake->body[0].x + 1;
-            snake->body[1].y = snake->body[0].y;
-            snake->body[2].x = snake->body[1].x + 1;
-            snake->body[2].y = snake->body[1].y;
+            snake->body[1].x += 1;
+            snake->body[2].x += 2;
             break;
 
         case SnakeDirection_DOWN:
-            snake->body[1].x = snake->body[0].x;
-            snake->body[1].y = snake->body[0].y - 1;
-            snake->body[2].x = snake->body[1].x;
-            snake->body[2].y = snake->body[1].y - 1;
+            snake->body[1].y -= 1;
+            snake->body[2].y -= 2;
             break;
 
         case SnakeDirection_RIGHT:
-            snake->body[1].x = snake->body[0].x - 1;
-            snake->body[1].y = snake->body[0].y;
-            snake->body[2].x = snake->body[1].x - 1;
-            snake->body[2].y = snake->body[1].y;
+            snake->body[1].x -= 1;
+            snake->body[2].x -= 2;
             break;
 
         case SnakeDirection_UP:
-            snake->body[1].x = snake->body[0].x;
-            snake->body[1].y = snake->body[0].y + 1;
-            snake->body[2].x = snake->body[1].x;
-            snake->body[2].y = snake->body[1].y + 1;
+            snake->body[1].y += 1;
+            snake->body[2].y += 2;
             break;
     }
 
@@ -448,18 +448,13 @@ static void board_gen_rand_item_pos(board_t * board)
     board->board[x][y] = BoardCellType_EAT;
 }
 
-static void snake_swap_direction(game_t * game)
-{
-
-}
-
 static void snake_move(game_t * game)
 {
     assert(game);
 
-    snake_body_t new_head = game->snake->body[0];
-    const snake_body_t old_head = game->snake->body[0];
-    const snake_body_t old_tail = game->snake->body[game->snake->size - 1];
+    snake_body_t new_head = game->snake->body[game->snake->h_pos];
+    const snake_body_t old_head = game->snake->body[game->snake->h_pos];
+    const snake_body_t old_tail = game->snake->body[game->snake->t_pos];
 
     switch (game->snake->direction)
     {
@@ -474,13 +469,13 @@ static void snake_move(game_t * game)
     {
         /// game over.
         case BoardCellType_WALL: case BoardCellType_SNAKEBODY:
-            printf("hit\n");
             game->state = GameState_QUIT;
             return;
 
         /// eat an item.
         case BoardCellType_EAT:
-            game->snake->body[game->snake->size] = game->snake->body[game->snake->size - 1];
+            game->snake->t_pos = (game->snake->t_pos + 1) % game->snake->size_max;
+            game->snake->body[game->snake->t_pos] = old_tail;
             ++game->snake->size;
             --game->board->item_count;
             break;
@@ -490,29 +485,18 @@ static void snake_move(game_t * game)
             break;
     }
 
-    /// NOTE: not sure which is faster.
-    /// i think both options are inneficient, though it's not like snake is
-    /// starved for performance.
-    /// memcpy is probably faster because it can be easily optimised by the compiler.
-    /// also no loops and no more 3 new temp vars.
-    memcpy(&game->snake->body[1], game->snake->body, sizeof(snake_body_t) * game->snake->size - 2);
+    /// update new head / tail pos in the body array.
+    game->snake->h_pos = (game->snake->h_pos - 1) % game->snake->size_max;
+    game->snake->t_pos = (game->snake->t_pos - 1) % game->snake->size_max;
 
-    // snake_body_t push_body = game->snake->body[0];
-    // for (uint16_t i = 0; i < game->snake->size - 1; i++)
-    // {
-    //     snake_body_t temp_body = game->snake->body[i+1];
-    //     game->snake->body[i+1] = push_body;
-    //     push_body = temp_body;
-    // }
+    /// move head to the new position in the array.
+    game->snake->body[game->snake->h_pos] = new_head;
 
-    /// update head pos
-    game->snake->body[0] = new_head;
-
-    /// update new head
+    /// update new head on the board.
     game->board->board[new_head.x][new_head.y] = BoardCellType_SNAKEHEAD;
-    /// fill in empty space between body and head.
+    /// fill in empty space between body and head on the board.
     game->board->board[old_head.x][old_head.y] = BoardCellType_SNAKEBODY;
-    /// remove old tail.
+    /// remove old tail from the board.
     game->board->board[old_tail.x][old_tail.y] = BoardCellType_EMPTY;
 }
 
