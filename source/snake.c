@@ -1,9 +1,4 @@
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
-
 #include "snake.h"
-
 
 #define ROWS    40
 #define COLUMNS 40
@@ -340,12 +335,13 @@ static void board_create(board_t * board, const uint8_t rows, const uint8_t colu
 
     board->rows = rows;
     board->columns = columns;
-    board->board = calloc(board->rows, sizeof(uint8_t *));
+    board->board = calloc(board->rows, sizeof(uint8_t*));
     assert(board->board);
 
+    /// allocate the columns, fill empty.
     for (uint8_t r = 0; r < board->rows; r++)
     {
-        board->board[r] = malloc(board->columns);
+        board->board[r] = calloc(board->columns, sizeof(uint8_t));
         assert(board->board[r]);
 
         for (uint8_t c = 0; c < board->columns; c++)
@@ -354,6 +350,8 @@ static void board_create(board_t * board, const uint8_t rows, const uint8_t colu
         }
     }
 
+    /// set a basic wall around the board.
+    /// levels will have layout of their own.
     for (uint8_t i = 0; i < rows; i++)
     {
         board->board[i][0] = BoardCellType_WALL;
@@ -422,30 +420,34 @@ static void snake_create(board_t * board, snake_t * snake)
     board->board[snake->body[2].x][snake->body[2].y] = BoardCellType_SNAKEBODY;
 }
 
-static const char *str_snake_direction(const SnakeDirection direction)
-{
-    switch (direction)
-    {
-        case SnakeDirection_LEFT:   return "LEFT";
-        case SnakeDirection_DOWN:   return "DOWN";
-        case SnakeDirection_RIGHT:  return "RIGHT";
-        case SnakeDirection_UP:     return "UP";
-        default:                    return "NULL";
-    }
-}
-
 static void board_gen_rand_item_pos(board_t * board)
 {
     assert(board);
 
     /// FIX: this can cause a pretty big loop if the board is nearly full.
-    uint8_t x, y;
+    uint8_t x = 0, y = 0;
     do
     {
         x = rand() % board->rows;
         y = rand() % board->columns;
     } while (board->board[x][y] != BoardCellType_EMPTY);
     board->board[x][y] = BoardCellType_EAT;
+}
+
+static void snake_invert_direction(snake_t * snake)
+{
+    assert(snake);
+
+    /// invert the direction.
+    snake->direction = (snake->direction + 2) % 4;
+    
+    /// swap the body emelments around.
+    for (uint16_t i = 0, sz = snake->size / 2; i < sz; i++)
+    {
+        snake_body_t temp_body = snake->body[(snake->h_pos + i) % snake->size_max];
+        snake->body[(snake->h_pos + i) % snake->size_max] = snake->body[(snake->t_pos - i) % snake->size_max];
+        snake->body[(snake->t_pos - i) % snake->size_max] = temp_body;
+    }
 }
 
 static void snake_move(game_t * game)
@@ -456,6 +458,7 @@ static void snake_move(game_t * game)
     const snake_body_t old_head = game->snake->body[game->snake->h_pos];
     const snake_body_t old_tail = game->snake->body[game->snake->t_pos];
 
+    /// update new position.
     switch (game->snake->direction)
     {
         case SnakeDirection_LEFT:   new_head.x--;   break;
@@ -467,10 +470,15 @@ static void snake_move(game_t * game)
     /// hit detection.
     switch (game->board->board[new_head.x][new_head.y])
     {
+        /// hit nothing.
+        case BoardCellType_EMPTY:
+            break;
+
         /// game over.
         case BoardCellType_WALL: case BoardCellType_SNAKEBODY:
             game->state = GameState_QUIT;
             return;
+            break;
 
         /// eat an item.
         case BoardCellType_EAT:
@@ -479,8 +487,7 @@ static void snake_move(game_t * game)
             ++game->snake->size;
             --game->board->item_count;
             break;
-        
-        /// hit nothing.
+
         default:
             break;
     }
@@ -518,7 +525,6 @@ static void snake_update_direction(snake_t * snake, const SnakeDirection new_dir
 {
     if (snake->direction != new_direction && ((snake->direction + 2) % 4) != new_direction)
     {
-        //fprintf(stdout, "changed direction. OLD:%s NEW:%s\n", str_snake_direction(snake->direction), str_snake_direction(new_direction));
         snake->direction = new_direction;
     }
 }
@@ -534,6 +540,7 @@ static void keyboard_update(game_t * game, const SDL_KeyboardEvent * e)
 
     switch (e->keysym.sym)
     {
+        /// up,down,left,right
         case SDLK_LEFT: case SDLK_a:
             snake_update_direction(game->snake, SnakeDirection_LEFT);
             break;
@@ -547,14 +554,22 @@ static void keyboard_update(game_t * game, const SDL_KeyboardEvent * e)
             snake_update_direction(game->snake, SnakeDirection_UP);
             break;
 
+        /// pause.
         case SDLK_SPACE:
             game->state = game->state == GameState_PAUSE ? GameState_PLAY : GameState_PAUSE;
             break;
 
+        /// test invertting direction.
+        case SDLK_k:
+            snake_invert_direction(game->snake);
+            break;
+
+        /// test reset.
         case SDLK_r:
             snake_new_game(game);
             break;
 
+        /// quit
         case SDLK_ESCAPE:
             game->state = GameState_QUIT;
             break;
@@ -754,25 +769,11 @@ static void update(game_t * game)
     }
 }
 
-#ifdef __EMSCRIPTEN__
-static void snake_run(void * game_void)
-{
-    game_t *game = (game_t*)game_void;
-#else
 static void snake_run(game_t * game)
 {
-#endif
-
     poll(game);
     update(game);
     render(game);
-
-    #if __EMSCRIPTEN__
-    if (game->state == GameState_QUIT)
-    {
-        emscripten_cancel_main_loop();
-    }
-    #endif
 }
 
 void snake_play()
@@ -781,16 +782,10 @@ void snake_play()
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
     game_t *game = snake_init();
-
     render_init_sdl(game->renderer);
-
     snake_new_game(game);
 
-    #if __EMSCRIPTEN__
-    emscripten_set_main_loop_arg(snake_run, game, -1, 1);
-    #else
     while (game->state != GameState_QUIT)
-    #endif
     {
         snake_run(game);
     }
