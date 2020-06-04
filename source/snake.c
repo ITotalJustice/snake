@@ -283,12 +283,16 @@ static game_t * snake_init(void)
 {
     game_t *game = calloc(1, sizeof(game_t));
     assert(game);
+
     game->board = calloc(1, sizeof(board_t));
     assert(game->board);
+
     game->snake = calloc(1, sizeof(snake_t));
     assert(game->snake);
+
     game->renderer = calloc(1, sizeof(renderer_t));
     assert(game->renderer);
+
     game->io = calloc(1, sizeof(io_t));
     assert(game->io);
 
@@ -434,6 +438,8 @@ static void board_gen_rand_item_pos(board_t * board)
     board->board[x][y] = BoardCellType_EAT;
 }
 
+#define WRAP(v,x,max) ((((uint16_t)(v + x)) % max))
+
 static void snake_invert_direction(snake_t * snake)
 {
     assert(snake);
@@ -444,9 +450,9 @@ static void snake_invert_direction(snake_t * snake)
     /// swap the body emelments around.
     for (uint16_t i = 0, sz = snake->size / 2; i < sz; i++)
     {
-        snake_body_t temp_body = snake->body[(snake->h_pos + i) % snake->size_max];
-        snake->body[(snake->h_pos + i) % snake->size_max] = snake->body[(snake->t_pos - i) % snake->size_max];
-        snake->body[(snake->t_pos - i) % snake->size_max] = temp_body;
+        snake_body_t temp_body = snake->body[WRAP(snake->h_pos, i, snake->size_max)];
+        snake->body[WRAP(snake->h_pos, i, snake->size_max)] = snake->body[WRAP(snake->t_pos, -i, snake->size_max)];
+        snake->body[WRAP(snake->t_pos, -i, snake->size_max)] = temp_body;
     }
 }
 
@@ -482,7 +488,7 @@ static void snake_move(game_t * game)
 
         /// eat an item.
         case BoardCellType_EAT:
-            game->snake->t_pos = (game->snake->t_pos + 1) % game->snake->size_max;
+            game->snake->t_pos = WRAP(game->snake->t_pos, 1, game->snake->size_max);
             game->snake->body[game->snake->t_pos] = old_tail;
             ++game->snake->size;
             --game->board->item_count;
@@ -493,8 +499,9 @@ static void snake_move(game_t * game)
     }
 
     /// update new head / tail pos in the body array.
-    game->snake->h_pos = (game->snake->h_pos - 1) % game->snake->size_max;
-    game->snake->t_pos = (game->snake->t_pos - 1) % game->snake->size_max;
+    game->snake->h_pos = WRAP(game->snake->h_pos, -1, game->snake->size_max);
+    game->snake->t_pos = WRAP(game->snake->t_pos, -1, game->snake->size_max);
+
 
     /// move head to the new position in the array.
     game->snake->body[game->snake->h_pos] = new_head;
@@ -780,10 +787,11 @@ void snake_play()
 {
     srand(time(NULL));
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
     game_t *game = snake_init();
-    render_init_sdl(game->renderer);
     snake_new_game(game);
+
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
+    render_init_sdl(game->renderer);
 
     while (game->state != GameState_QUIT)
     {
@@ -791,6 +799,7 @@ void snake_play()
     }
 
     render_exit_sdl(game->renderer);
-    snake_exit(game);
     SDL_Quit();
+
+    snake_exit(game);
 }
