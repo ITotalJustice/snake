@@ -1,8 +1,8 @@
 #include "snake.h"
 
-#define ROWS    40
-#define COLUMNS 40
-#define SCALE   15
+#define ROWS    20
+#define COLUMNS 20
+#define SCALE   30
 
 #define WIN_W    ROWS * SCALE
 #define WIN_H    COLUMNS * SCALE
@@ -13,7 +13,7 @@ typedef enum
     BoardCellType_WALL          = '#',
     BoardCellType_SNAKEBODY     = '-',
     BoardCellType_SNAKEHEAD     = 'O',
-    BoardCellType_EAT           = '*',
+    BoardCellType_ITEM          = '*',
 } BoardCellType;
 
 typedef enum
@@ -35,15 +35,13 @@ typedef struct
 {
     uint8_t x;
     uint8_t y;
+    SnakeDirection direction;
 } snake_body_t;
 
 typedef struct
 {
     uint16_t size;
     uint16_t size_max;
-
-    SnakeDirection direction;
-    SnakeDirection prev_direction;
 
     uint16_t h_pos;
     uint16_t t_pos;
@@ -52,6 +50,7 @@ typedef struct
 
 typedef enum
 {
+    ItemType_NONE,
     ItemType_FOOD,
     ItemType_POWERUP,
 } ItemType;
@@ -68,7 +67,8 @@ typedef struct
 {
     uint32_t score;
 
-    uint8_t item_count;
+    uint16_t item_count;
+    uint16_t item_max;
     board_item_t *items;
 
     uint8_t rows;
@@ -190,7 +190,7 @@ static void render_set_colour_type(const renderer_t * renderer, BoardCellType ty
         case BoardCellType_WALL:        SDL_SetRenderDrawColor(renderer->renderer, 153, 0, 0, 0xFF);    break;
         case BoardCellType_SNAKEHEAD:   SDL_SetRenderDrawColor(renderer->renderer, 56, 153, 56, 0xFF);  break;
         case BoardCellType_SNAKEBODY:   SDL_SetRenderDrawColor(renderer->renderer, 36, 93, 36, 0xFF);   break;
-        case BoardCellType_EAT:         SDL_SetRenderDrawColor(renderer->renderer, 56, 153, 153, 0xFF); break;
+        case BoardCellType_ITEM:        SDL_SetRenderDrawColor(renderer->renderer, 56, 153, 153, 0xFF); break;
 
         default: break;
     }
@@ -263,8 +263,6 @@ static void snake_free(snake_t * snake)
     snake->size = 0;
     snake->h_pos = 0;
     snake->t_pos = 0;
-    snake->direction = 0;
-    snake->prev_direction = 0;
 
     if (snake->body)
     {
@@ -354,6 +352,11 @@ static void board_create(board_t * board, const uint8_t rows, const uint8_t colu
         }
     }
 
+    board->item_count = 0;
+    board->item_max = 321;
+    board->items = calloc(board->item_max, sizeof(board_item_t));
+    assert(board->items);
+
     /// set a basic wall around the board.
     /// levels will have layout of their own.
     for (uint8_t i = 0; i < rows; i++)
@@ -363,7 +366,6 @@ static void board_create(board_t * board, const uint8_t rows, const uint8_t colu
         board->board[i][rows - 1] = BoardCellType_WALL;
         board->board[rows - 1][i] = BoardCellType_WALL;
     }
-
 }
 
 static SnakeDirection snake_gen_rand_direction(void)
@@ -381,21 +383,20 @@ static void snake_create(board_t * board, snake_t * snake)
     snake->body = calloc(snake->size_max, sizeof(snake_body_t));
     assert(snake->body);
 
-    /// random starting direction.
-    snake->direction = snake_gen_rand_direction();
     snake->size = 3;
     snake->h_pos = 0;
     snake->t_pos = 2;
 
     /// set the head to start in the middle.
     /// the body will be set to the same position as the head.
+    snake->body[0].direction = snake_gen_rand_direction();
     snake->body[0].x = board->rows/2;
     snake->body[0].y = board->columns/2;
     snake->body[1] = snake->body[0];
     snake->body[2] = snake->body[0];
 
     /// calculate the rest of the snake body position based on the initial direction.
-    switch (snake->direction)
+    switch (snake->body[0].direction)
     {
         case SnakeDirection_LEFT:
             snake->body[1].x += 1;
@@ -424,7 +425,7 @@ static void snake_create(board_t * board, snake_t * snake)
     board->board[snake->body[2].x][snake->body[2].y] = BoardCellType_SNAKEBODY;
 }
 
-static void board_gen_rand_item_pos(board_t * board)
+static void board_gen_rand_item_pos(board_t * board, const ItemType type)
 {
     assert(board);
 
@@ -435,25 +436,34 @@ static void board_gen_rand_item_pos(board_t * board)
         x = rand() % board->rows;
         y = rand() % board->columns;
     } while (board->board[x][y] != BoardCellType_EMPTY);
-    board->board[x][y] = BoardCellType_EAT;
+
+    board->board[x][y] = BoardCellType_ITEM;
+    board->items[board->item_count].type = type;
+    board->items[board->item_count].x = x;
+    board->items[board->item_count].y = y;
 }
 
 #define WRAP(v,x,max) ((((uint16_t)(v + x)) % max))
+#define DIRECTION_INVERT(x) (((x + 2) % 4))
 
 static void snake_invert_direction(snake_t * snake)
 {
     assert(snake);
 
-    /// invert the direction.
-    snake->direction = (snake->direction + 2) % 4;
-    
     /// swap the body emelments around.
     for (uint16_t i = 0, sz = snake->size / 2; i < sz; i++)
     {
         snake_body_t temp_body = snake->body[WRAP(snake->h_pos, i, snake->size_max)];
+        temp_body.direction = DIRECTION_INVERT(temp_body.direction);
+
         snake->body[WRAP(snake->h_pos, i, snake->size_max)] = snake->body[WRAP(snake->t_pos, -i, snake->size_max)];
+        snake->body[WRAP(snake->h_pos, i, snake->size_max)].direction = DIRECTION_INVERT(snake->body[WRAP(snake->h_pos, i, snake->size_max)].direction);
+
         snake->body[WRAP(snake->t_pos, -i, snake->size_max)] = temp_body;
     }
+
+    /// invert the direction.
+    //snake->body[0].direction = DIRECTION_INVERT(snake->body[0].direction);
 }
 
 static void snake_move(game_t * game)
@@ -465,7 +475,7 @@ static void snake_move(game_t * game)
     const snake_body_t old_tail = game->snake->body[game->snake->t_pos];
 
     /// update new position.
-    switch (game->snake->direction)
+    switch (old_head.direction)
     {
         case SnakeDirection_LEFT:   new_head.x--;   break;
         case SnakeDirection_DOWN:   new_head.y++;   break;
@@ -482,16 +492,26 @@ static void snake_move(game_t * game)
 
         /// game over.
         case BoardCellType_WALL: case BoardCellType_SNAKEBODY:
-            game->state = GameState_QUIT;
+            game->state = GameState_PAUSE;
+            game->board->board[new_head.x][new_head.y] = BoardCellType_SNAKEHEAD;
             return;
             break;
 
         /// eat an item.
-        case BoardCellType_EAT:
-            game->snake->t_pos = WRAP(game->snake->t_pos, 1, game->snake->size_max);
-            game->snake->body[game->snake->t_pos] = old_tail;
-            ++game->snake->size;
-            --game->board->item_count;
+        case BoardCellType_ITEM:
+            for (uint16_t i = 0; i < game->board->item_count; i++)
+            {
+                if (game->board->items[i].x == new_head.x && game->board->items[i].y == new_head.y && game->board->items[i].type != ItemType_NONE)
+                {
+                    game->snake->t_pos = WRAP(game->snake->t_pos, 1, game->snake->size_max);
+                    game->snake->body[game->snake->t_pos] = old_tail;
+
+                    ++game->snake->size;
+                    --game->board->item_count;
+                    game->board->items[i].type = ItemType_NONE;
+                    break;
+                }
+            }
             break;
 
         default:
@@ -521,7 +541,7 @@ static int snake_new_game(game_t * game)
     /// clear game if already playing.
     snake_end_game(game);
 
-    game->update_freq = 5;
+    game->update_freq = 6;
     board_create(game->board, ROWS, COLUMNS);
     snake_create(game->board, game->snake);
 
@@ -530,9 +550,9 @@ static int snake_new_game(game_t * game)
 
 static void snake_update_direction(snake_t * snake, const SnakeDirection new_direction)
 {
-    if (snake->direction != new_direction && ((snake->direction + 2) % 4) != new_direction)
+    if (snake->body[snake->h_pos].direction != new_direction && DIRECTION_INVERT(snake->body[snake->h_pos].direction) != new_direction)
     {
-        snake->direction = new_direction;
+        snake->body[snake->h_pos].direction = new_direction;
     }
 }
 
@@ -759,7 +779,7 @@ static void update_board(game_t * game)
     /// create new eat item on board
     if (game->board->item_count == 0)
     {
-        board_gen_rand_item_pos(game->board);
+        board_gen_rand_item_pos(game->board, ItemType_FOOD);
         game->board->item_count++;
     }
 }
