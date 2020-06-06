@@ -21,6 +21,9 @@ static int allegro_init(renderer_t * renderer, const uint32_t w, const uint32_t 
     renderer->queue = al_create_event_queue();
     assert(renderer->queue);
 
+    renderer->font = al_load_ttf_font("data/mplus-2p-regular.ttf", 64, 0);
+    assert(renderer->font);
+
     al_register_event_source(renderer->queue, al_get_display_event_source(renderer->display));
     al_register_event_source(renderer->queue, al_get_keyboard_event_source());
     al_register_event_source(renderer->queue, al_get_mouse_event_source());
@@ -170,6 +173,13 @@ static void draw_filled_rect(const renderer_t * renderer, const rect_t rect, con
     #endif
 }
 
+static void draw_text(const renderer_t * renderer, const colour_t colour, float x, float y, int flags, char const * text, ...)
+{
+    #ifdef ALLEGRO
+        al_draw_text(renderer->font, al_map_rgba(colour.r, colour.g, colour.b, colour.a), x, y, flags, text);
+    #endif
+}
+
 static void draw_grid(const renderer_t * renderer, const uint32_t rows, const uint32_t columns, const rect_t clip, const colour_t colour)
 {
     assert(renderer);
@@ -226,14 +236,22 @@ static void draw_board(const renderer_t * renderer, const board_t * board)
     }
 }
 
+static void draw_osd(const renderer_t * renderer, const board_t * board)
+{
+    assert(renderer); assert(board);
+
+    draw_text(renderer, map_rgb(80,80,80), renderer->clip.w / 2, 1 * renderer->scale, 1 /*ALLEGRO_ALIGN_CENTER*/, "Snake");
+}
+
 void snake_render(game_t * game)
 {
     assert(game);
 
     render_clear(game->renderer, map_rgb(0,0,0));
 
-    draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
+    //draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
     draw_board(game->renderer, game->board);
+    draw_osd(game->renderer, game->board);
 
     render_update(game->renderer);
 }

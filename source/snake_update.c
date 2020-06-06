@@ -5,7 +5,8 @@
 
 static void snake_update_direction(snake_t * snake, const SnakeDirection new_direction)
 {
-    if (snake->body[snake->h_pos].direction != new_direction && DIRECTION_INVERT(snake->body[snake->h_pos].direction) != new_direction)
+    if (snake->body[snake->h_pos].direction != new_direction && \
+        DIRECTION_INVERT(snake->body[snake->h_pos].direction) != new_direction)
     {
         snake->body[snake->h_pos].direction = new_direction;
     }
@@ -18,13 +19,16 @@ static void snake_invert_direction(snake_t * snake)
     /// swap the body emelments around.
     for (uint16_t i = 0, sz = snake->size / 2; i < sz; i++)
     {
-        snake_body_t temp_body = snake->body[WRAP(snake->h_pos, i, snake->size_max)];
+        const uint16_t wrapped_h_pos = WRAP(snake->h_pos, i, snake->size_max);
+        const uint16_t wrapped_t_pos = WRAP(snake->h_pos, -i, snake->size_max);
+
+        snake_body_t temp_body = snake->body[wrapped_h_pos];
         temp_body.direction = DIRECTION_INVERT(temp_body.direction);
 
-        snake->body[WRAP(snake->h_pos, i, snake->size_max)] = snake->body[WRAP(snake->t_pos, -i, snake->size_max)];
-        snake->body[WRAP(snake->h_pos, i, snake->size_max)].direction = DIRECTION_INVERT(snake->body[WRAP(snake->h_pos, i, snake->size_max)].direction);
+        snake->body[wrapped_h_pos] = snake->body[wrapped_t_pos];
+        snake->body[wrapped_h_pos].direction = DIRECTION_INVERT(snake->body[wrapped_h_pos].direction);
 
-        snake->body[WRAP(snake->t_pos, -i, snake->size_max)] = temp_body;
+        snake->body[wrapped_t_pos] = temp_body;
     }
 }
 
@@ -45,6 +49,9 @@ static void snake_move(game_t * game)
         case SnakeDirection_UP:     new_head.y--;   break;
     }
 
+    /// sanity check to make sure we are still in bounds (should never fail).
+    assert(new_head.x < game->board->columns); assert(new_head.y < game->board->rows);
+
     /// hit detection.
     switch (game->board->board[new_head.x][new_head.y])
     {
@@ -62,7 +69,9 @@ static void snake_move(game_t * game)
         case BoardCellType_ITEM:
             for (uint16_t i = 0; i < game->board->item_count; i++)
             {
-                if (game->board->items[i].x == new_head.x && game->board->items[i].y == new_head.y && game->board->items[i].type != ItemType_NONE)
+                if (game->board->items[i].x == new_head.x && \
+                    game->board->items[i].y == new_head.y && \
+                    game->board->items[i].type != ItemType_NONE)
                 {
                     game->snake->t_pos = WRAP(game->snake->t_pos, 1, game->snake->size_max);
                     game->snake->body[game->snake->t_pos] = old_tail;
