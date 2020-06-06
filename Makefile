@@ -5,9 +5,9 @@ EXE			= snake
 SRC			= ./source
 
 # Main source file.
-SOURCES 	= main.c
+SOURCES 	= main.c util.c
 
-SOURCES 	+= snake.c util.c
+SOURCES 	+= snake.c snake_poll.c snake_update.c snake_render.c snake_util.c
 
 # SDL2 libs
 LIBS		= `sdl2-config --libs`
