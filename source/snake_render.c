@@ -243,6 +243,11 @@ static void draw_osd(const renderer_t * renderer, const board_t * board)
     draw_text(renderer, map_rgb(80,80,80), renderer->clip.w / 2, 1 * renderer->scale, 1 /*ALLEGRO_ALIGN_CENTER*/, "Snake");
 }
 
+static void draw_menu(const renderer_t * renderer)
+{
+    assert(renderer);
+}
+
 void snake_render(game_t * game)
 {
     assert(game);
