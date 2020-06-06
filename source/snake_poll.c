@@ -18,25 +18,17 @@ static void keyboard_update(game_t * game, const SDL_KeyboardEvent * e)
             break;
         case SDLK_DOWN: case SDLK_s:
             game->io->type = KeyType_DOWN;
-            //snake_update_direction(game->snake, SnakeDirection_DOWN);
             break;
         case SDLK_RIGHT: case SDLK_d:
             game->io->type = KeyType_RIGHT;
-            //snake_update_direction(game->snake, SnakeDirection_RIGHT);
             break;
         case SDLK_UP: case SDLK_w:
             game->io->type = KeyType_UP;
-            //snake_update_direction(game->snake, SnakeDirection_UP);
             break;
 
         /// pause.
         case SDLK_SPACE:
             game->state = game->state == GameState_PAUSE ? GameState_PLAY : GameState_PAUSE;
-            break;
-
-        /// test invertting direction.
-        case SDLK_k:
-            //snake_invert_direction(game->snake);
             break;
 
         /// test reset.
@@ -165,11 +157,9 @@ static void cbutton_update(game_t * game, const SDL_ControllerButtonEvent * e)
             break;
     }
 }
-#endif
 
 static void poll_sdl2(game_t * game)
 {
-    #ifdef SDL2
     SDL_Event event = {0};
 
     while (SDL_PollEvent(&event))
@@ -214,13 +204,83 @@ static void poll_sdl2(game_t * game)
                 break;
         }
     }
-    #endif
+}
+#endif
+
+#ifdef ALLEGRO
+static void keyboard_update(game_t * game, ALLEGRO_KEYBOARD_EVENT * e)
+{
+    assert(game); assert(e);
+
+    switch (e->keycode)
+    {
+        case ALLEGRO_KEY_UP: case ALLEGRO_KEY_W:
+            game->io->type = KeyType_UP;
+            break;
+        case ALLEGRO_KEY_DOWN: case ALLEGRO_KEY_S:
+            game->io->type = KeyType_DOWN;
+            break;
+        case ALLEGRO_KEY_LEFT: case ALLEGRO_KEY_A:
+            game->io->type = KeyType_LEFT;
+            break;
+        case ALLEGRO_KEY_RIGHT: case ALLEGRO_KEY_D:
+            game->io->type = KeyType_RIGHT;
+            break;
+
+        case ALLEGRO_KEY_SPACE:
+            game->state = game->state == GameState_PAUSE ? GameState_PLAY : GameState_PAUSE;
+            break;
+            
+        case ALLEGRO_KEY_ESCAPE:
+            game->state = GameState_QUIT;
+            break;
+        break;
+    }
+}
+
+static void jbutton_update(game_t * game, ALLEGRO_JOYSTICK_EVENT * e)
+{
+    assert(game); assert(e);
+
+    switch (e->type)
+    {
+        default:
+            break;
+    }
 }
 
 static void poll_allegro(game_t * game)
 {
+    assert(game);
 
+    ALLEGRO_EVENT event;
+    while (al_wait_for_event_timed(game->renderer->queue, &event, 0))
+    {
+        switch (event.type)
+        {
+            case ALLEGRO_EVENT_DISPLAY_CLOSE:
+                game->state = GameState_QUIT;
+                break;
+
+            case ALLEGRO_EVENT_DISPLAY_RESIZE:
+                game->renderer->clip.w = event.display.width; game->renderer->clip.h = event.display.height;
+                al_acknowledge_resize(event.display.source);
+                break;
+
+            case ALLEGRO_EVENT_KEY_DOWN:
+                keyboard_update(game, &event.keyboard);
+                break;
+
+            case ALLEGRO_EVENT_JOYSTICK_BUTTON_DOWN:
+                jbutton_update(game, &event.joystick);
+                break;
+
+            default:
+                break;
+        }
+    }
 }
+#endif
 
 void snake_poll(game_t * game)
 {

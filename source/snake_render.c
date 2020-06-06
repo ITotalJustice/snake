@@ -1,8 +1,8 @@
 #include "snake.h"
 
+#ifdef ALLEGRO
 static int allegro_init(renderer_t * renderer, const uint32_t w, const uint32_t h)
 {
-    #ifdef ALLEGRO
     assert(renderer); assert(w); assert(h);
 
     bool result;
@@ -28,14 +28,12 @@ static int allegro_init(renderer_t * renderer, const uint32_t w, const uint32_t 
 
     renderer->opengl = true;
     renderer->scale = 30;
-    #endif
 
     return 0;
 }
 
 static void allegro_exit(renderer_t * renderer)
 {
-    #ifdef ALLEGRO
     al_destroy_display(renderer->display);
     al_destroy_event_queue(renderer->queue);
     al_destroy_font(renderer->font);
@@ -46,12 +44,12 @@ static void allegro_exit(renderer_t * renderer)
     if (al_is_primitives_addon_initialized()) al_shutdown_primitives_addon();
     if (al_is_ttf_addon_initialized()) al_shutdown_ttf_addon();
     if (al_is_font_addon_initialized()) al_shutdown_font_addon();
-    #endif
 }
+#endif
 
+#ifdef SDL2
 static int sdl2_init(renderer_t * renderer, const uint32_t w, const uint32_t h)
 {
-    #ifdef SDL2
     assert(renderer); assert(w); assert(h);
 
     int result = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
@@ -73,14 +71,12 @@ static int sdl2_init(renderer_t * renderer, const uint32_t w, const uint32_t h)
 
     renderer->opengl = false;
     renderer->scale = 30;
-    #endif
 
     return 0;
 }
 
 static void sdl2_exit(renderer_t * renderer)
 {
-    #ifdef SDL2
     assert(renderer);
 
     if (renderer->texture)
@@ -100,8 +96,8 @@ static void sdl2_exit(renderer_t * renderer)
     }
 
     SDL_Quit();
-    #endif
 }
+#endif
 
 int snake_render_init(renderer_t * renderer, const uint32_t w, const uint32_t h)
 {
@@ -236,7 +232,7 @@ void snake_render(game_t * game)
 
     render_clear(game->renderer, map_rgb(0,0,0));
 
-    //draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
+    draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
     draw_board(game->renderer, game->board);
 
     render_update(game->renderer);

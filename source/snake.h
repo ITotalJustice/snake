@@ -103,10 +103,9 @@ typedef struct
 {
     KeyType type;
 
-    //#ifdef ALLEGRO
-
-    //#elif SDL2
-    #ifdef SDL2
+    #ifdef ALLEGRO
+    ALLEGRO_JOYSTICK *joystick;
+    #elif SDL2
     SDL_Joystick *joystick;
     SDL_GameController *controller;
     #endif

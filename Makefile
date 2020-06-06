@@ -9,15 +9,17 @@ SOURCES 	= main.c util.c
 
 SOURCES 	+= snake.c snake_poll.c snake_update.c snake_render.c snake_util.c
 
+#-DSDL2 #-DALLEGRO
+
 # SDL2 libs
-LIBS		= `sdl2-config --libs`
+LIBS		+= `sdl2-config --libs`
 
 # ALLEGRO libs
-#LIBS		= -lallegro -lallegro_primitives -lallegro_font -lallegro_ttf
+LIBS		+= -lallegro -lallegro_primitives -lallegro_font -lallegro_ttf
 
 RELEASE		= -O3 -march=native -DNDEBUG
 
-CXXFLAGS	+= -Wall -Wformat -DSDL2 #-DALLEGRO #$(RELEASE)
+CXXFLAGS	+= -Wall -Wformat #$(RELEASE)
 
 OBJS		= $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 

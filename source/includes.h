@@ -10,6 +10,9 @@
 #include <time.h>
 #include <assert.h>
 
+#define ALLEGRO 1
+//#define SDL2 1
+
 #ifdef ALLEGRO
     #include <allegro5/allegro5.h>
     #include <allegro5/allegro_primitives.h>
