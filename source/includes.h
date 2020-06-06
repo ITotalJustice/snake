@@ -10,4 +10,13 @@
 #include <time.h>
 #include <assert.h>
 
-#include <SDL2/SDL.h>
+#ifdef ALLEGRO
+    #include <allegro5/allegro5.h>
+    #include <allegro5/allegro_primitives.h>
+    #include <allegro5/allegro_font.h>
+    #include <allegro5/allegro_ttf.h>
+#elif SDL2
+    #include <SDL2/SDL.h>
+#endif
+
+#include "util.h"

@@ -7,13 +7,17 @@ SRC			= ./source
 # Main source file.
 SOURCES 	= main.c
 
-SOURCES 	+= snake.c
+SOURCES 	+= snake.c util.c
 
+# SDL2 libs
 LIBS		= `sdl2-config --libs`
+
+# ALLEGRO libs
+#LIBS		= -lallegro -lallegro_primitives -lallegro_font -lallegro_ttf
 
 RELEASE		= -O3 -march=native -DNDEBUG
 
-CXXFLAGS	+= -Wall -Wformat #$(RELEASE)
+CXXFLAGS	+= -Wall -Wformat -DSDL2 #-DALLEGRO #$(RELEASE)
 
 OBJS		= $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 
