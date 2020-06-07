@@ -24,6 +24,7 @@ typedef enum
 {
     GameState_PLAY,
     GameState_PAUSE,
+    GameState_MENU,
     GameState_QUIT,
 } GameState;
 

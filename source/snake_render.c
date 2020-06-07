@@ -231,7 +231,9 @@ static void draw_board(const renderer_t * renderer, const board_t * board)
                 continue;
             }
 
-            draw_board_rect(renderer, map_rect(r * renderer->scale, c * renderer->scale, renderer->scale, renderer->scale), board->board[r][c]);
+            draw_board_rect(renderer,
+                map_rect(renderer->clip.x + (r * renderer->scale), renderer->clip.y + (c * renderer->scale), renderer->scale, renderer->scale),
+                board->board[r][c]);
         }
     }
 }
@@ -241,11 +243,24 @@ static void draw_osd(const renderer_t * renderer, const board_t * board)
     assert(renderer); assert(board);
 
     draw_text(renderer, map_rgb(80,80,80), renderer->clip.w / 2, 1 * renderer->scale, 1 /*ALLEGRO_ALIGN_CENTER*/, "Snake");
+    ///draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
 }
 
 static void draw_menu(const renderer_t * renderer)
 {
     assert(renderer);
+
+    draw_text(renderer, map_rgb(155,155,155), renderer->clip.w / 2, 1.5 * renderer->scale, 1 /*ALLEGRO_ALIGN_CENTER*/, "Snake");
+
+    const char * options[] = { "Play", "Options", "Quit" };
+
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        draw_filled_rect(renderer, \
+            map_rect((renderer->clip.w / 2) - (5 * renderer->scale), ((i * 3.5 + 7.8) * renderer->scale), (5 * renderer->scale) * 2, 80), \
+            map_rgba(40,40,40,100));
+        draw_text(renderer, map_rgb(155,155,155), renderer->clip.w / 2, ((i * 3.5 + 7.5) * renderer->scale), 1, options[i]);
+    } 
 }
 
 void snake_render(game_t * game)
@@ -254,9 +269,22 @@ void snake_render(game_t * game)
 
     render_clear(game->renderer, map_rgb(0,0,0));
 
-    //draw_grid(game->renderer, game->board->rows, game->board->columns, game->renderer->clip, map_rgb(255,255,255));
-    draw_board(game->renderer, game->board);
-    draw_osd(game->renderer, game->board);
+    switch (game->state)
+    {
+        
+        case GameState_PLAY: case GameState_PAUSE:
+            draw_board(game->renderer, game->board);
+            draw_menu(game->renderer);
+            break;
+
+        case GameState_MENU:
+            draw_board(game->renderer, game->board);
+            draw_menu(game->renderer);
+            break;
+
+        case GameState_QUIT:
+            break;
+    }
 
     render_update(game->renderer);
 }

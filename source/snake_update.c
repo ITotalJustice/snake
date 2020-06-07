@@ -133,7 +133,7 @@ static void update_ai(game_t * game)
         new_direction = SnakeDirection_RIGHT;
     }
 
-    if (y < 0 && head.direction != SnakeDirection_DOWN)
+    else if (y < 0 && head.direction != SnakeDirection_DOWN)
     {
         new_direction = SnakeDirection_UP;
     }

@@ -230,7 +230,8 @@ void snake_play()
     snake_render_init(game->renderer, WIN_W, WIN_H);
 
     snake_new_game(game);
-    //game->state = GameState_PAUSE;
+    game->state = GameState_PLAY;
+    game->player_type = Player_AI;
 
     while (game->state != GameState_QUIT)
     {

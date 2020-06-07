@@ -264,6 +264,9 @@ static void poll_allegro(game_t * game)
 
             case ALLEGRO_EVENT_DISPLAY_RESIZE:
                 game->renderer->clip.w = event.display.width; game->renderer->clip.h = event.display.height;
+                game->renderer->scale = (game->renderer->clip.w < game->renderer->clip.h ? game->renderer->clip.w : game->renderer->clip.h) / 20;
+                game->renderer->clip.x = (game->renderer->clip.w - (game->renderer->scale * 20)) / 2;
+                game->renderer->clip.y = (game->renderer->clip.h - (game->renderer->scale * 20)) / 2;
                 al_acknowledge_resize(event.display.source);
                 break;
 
