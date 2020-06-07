@@ -163,6 +163,7 @@ static void snake_create(board_t * board, snake_t * snake)
     /// set the head to start in the middle.
     /// the body will be set to the same position as the head.
     snake->body[0].direction = snake_gen_rand_direction();
+    snake->buffered_direction = snake->body[0].direction;
     snake->body[0].x = board->rows/2;
     snake->body[0].y = board->columns/2;
     snake->body[1] = snake->body[0];

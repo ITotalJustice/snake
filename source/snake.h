@@ -47,6 +47,8 @@ typedef struct
     uint16_t size;
     uint16_t size_max;
 
+    SnakeDirection buffered_direction;
+
     uint16_t h_pos;
     uint16_t t_pos;
     snake_body_t *body;
@@ -111,6 +113,12 @@ typedef struct
     #endif
 } io_t;
 
+typedef enum
+{
+    Player_NORMAL,
+    Player_AI,
+} Player;
+
 typedef struct
 {
     /// current render frame.
@@ -118,6 +126,9 @@ typedef struct
 
     /// how often to update the game (per frame).
     uint8_t update_freq;
+
+    /// TODO: cleanly impliment this.
+    Player player_type;
 
     /// play, pause or quit.
     GameState state;
@@ -135,6 +146,7 @@ typedef struct
     io_t *io;
 } game_t;
 
+bool snake_inbounds(board_t * board, const uint8_t x, const uint8_t y);
 SnakeDirection snake_gen_rand_direction(void);
 void board_gen_rand_item_pos(board_t * board, const ItemType type);
 
